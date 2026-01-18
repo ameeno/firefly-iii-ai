@@ -1,9 +1,10 @@
-import {getConfigVariable} from "./util.js";
+import { getConfigVariable } from "./util.js";
 
 export default class FireflyService {
     #BASE_URL;
     #PERSONAL_TOKEN;
     #DEBUG;
+    #AUTH_EMAIL;
 
     constructor() {
         this.#BASE_URL = getConfigVariable("FIREFLY_URL")
@@ -13,6 +14,23 @@ export default class FireflyService {
 
         this.#PERSONAL_TOKEN = getConfigVariable("FIREFLY_PERSONAL_TOKEN")
         this.#DEBUG = getConfigVariable("DEBUG", "false") === "true";
+        this.#AUTH_EMAIL = getConfigVariable("FIREFLY_AUTH_HEADER_EMAIL", undefined);
+    }
+
+    #getHeaders(isJson = false) {
+        const headers = {
+            Authorization: `Bearer ${this.#PERSONAL_TOKEN}`,
+        };
+
+        if (this.#AUTH_EMAIL) {
+            headers["REMOTE_EMAIL"] = this.#AUTH_EMAIL;
+        }
+
+        if (isJson) {
+            headers["Content-Type"] = "application/json";
+        }
+
+        return headers;
     }
 
     #debugLog(message, data = null) {
@@ -27,11 +45,9 @@ export default class FireflyService {
 
     async getCategories() {
         this.#debugLog("Fetching categories from Firefly III", { url: `${this.#BASE_URL}/api/v1/categories` });
-        
+
         const response = await fetch(`${this.#BASE_URL}/api/v1/categories`, {
-            headers: {
-                Authorization: `Bearer ${this.#PERSONAL_TOKEN}`,
-            }
+            headers: this.#getHeaders(),
         });
 
         if (!response.ok) {
@@ -96,7 +112,7 @@ export default class FireflyService {
         const webhookData = {
             title: "AI Categorizer",
             trigger: "STORE_TRANSACTION",
-            response: "TRANSACTIONS", 
+            response: "TRANSACTIONS",
             delivery: "JSON",
             url: webhookUrl,
             active: true
@@ -178,7 +194,7 @@ export default class FireflyService {
 
     async getBudgets() {
         this.#debugLog("Fetching budgets from Firefly III", { url: `${this.#BASE_URL}/api/v1/budgets` });
-        
+
         const response = await fetch(`${this.#BASE_URL}/api/v1/budgets`, {
             headers: {
                 Authorization: `Bearer ${this.#PERSONAL_TOKEN}`,
@@ -230,7 +246,7 @@ export default class FireflyService {
 
   async removeTagFromTransaction(transactionId, tagName) {
     this.#debugLog("Removing tag from transaction", { transactionId, tagName });
-    
+
     // Récupérer d'abord la transaction pour obtenir les tags actuels
     const response = await fetch(`${this.#BASE_URL}/api/v1/transactions/${transactionId}`, {
       headers: {
@@ -250,9 +266,9 @@ export default class FireflyService {
     // Filtrer le tag à supprimer
     const updatedTags = currentTags.filter(tag => tag !== tagName);
 
-    this.#debugLog("Updated tags after removal", { 
-      originalTags: currentTags, 
-      updatedTags: updatedTags 
+    this.#debugLog("Updated tags after removal", {
+      originalTags: currentTags,
+      updatedTags: updatedTags
     });
 
     // Mettre à jour la transaction avec les nouveaux tags
@@ -284,7 +300,7 @@ export default class FireflyService {
 
   async getTransactionsWithTag(tagName, limit = 100) {
     this.#debugLog("Fetching transactions with tag", { tagName, limit });
-    
+
     // Récupérer les dernières transactions (les plus récentes en premier) avec les tags
     const response = await fetch(`${this.#BASE_URL}/api/v1/transactions?limit=${limit}&order_by=created_at&order_direction=desc&include=tags`, {
       headers: {
@@ -299,7 +315,7 @@ export default class FireflyService {
     }
 
     const data = await response.json();
-    this.#debugLog("Transactions API response", { 
+    this.#debugLog("Transactions API response", {
       totalTransactions: data.data.length,
       firstTransaction: data.data[0] ? {
         id: data.data[0].id,
@@ -313,7 +329,7 @@ export default class FireflyService {
       const tags1 = transaction.attributes.tags || [];
       const tags2 = transaction.tags || [];
       const tags3 = transaction.attributes.transactions?.[0]?.tags || [];
-      
+
       this.#debugLog("Checking transaction tags", {
         transactionId: transaction.id,
         tags1: tags1.map(t => t.name || t),
@@ -324,16 +340,16 @@ export default class FireflyService {
         hasTag2: tags2.some(tag => (tag.name || tag) === tagName),
         hasTag3: tags3.some(tag => (tag.name || tag) === tagName)
       });
-      
+
       return tags1.some(tag => (tag.name || tag) === tagName) ||
              tags2.some(tag => (tag.name || tag) === tagName) ||
              tags3.some(tag => (tag.name || tag) === tagName);
     });
 
-    this.#debugLog("Filtered transactions", { 
-      total: data.data.length, 
+    this.#debugLog("Filtered transactions", {
+      total: data.data.length,
       filtered: filteredTransactions.length,
-      tagName 
+      tagName
     });
 
     return filteredTransactions;
@@ -390,7 +406,7 @@ export default class FireflyService {
 
     async setBudget(transactionId, budgetId) {
         this.#debugLog("Setting budget for transaction", { transactionId, budgetId });
-        
+
         const response = await fetch(`${this.#BASE_URL}/api/v1/transactions/${transactionId}`, {
             method: "PUT",
             headers: {
