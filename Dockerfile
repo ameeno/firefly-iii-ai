@@ -3,6 +3,10 @@ FROM node:20-alpine3.22
 
 # Set environment variables
 ENV NODE_ENV=production
+ENV OPENAI_API_KEY=""
+ENV OPENAI_BASE_URL=""
+ENV OPENAI_MODEL="gpt-3.5-turbo"
+
 
 # Create app directory and user for security
 WORKDIR /app

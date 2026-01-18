@@ -12,9 +12,16 @@ export default class OpenAiService {
     this.#language = language;
     this.#DEBUG = getConfigVariable("DEBUG", "false") === "true";
 
-    this.#openAi = new OpenAI({
+    const openAiConfig = {
       apiKey,
-    });
+    };
+
+    const baseURL = getConfigVariable("OPENAI_BASE_URL");
+    if (baseURL) {
+      openAiConfig.baseURL = baseURL;
+    }
+
+    this.#openAi = new OpenAI(openAiConfig);
   }
 
   #debugLog(message, data = null) {
