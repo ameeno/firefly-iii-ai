@@ -4,7 +4,6 @@ export default class FireflyService {
     #BASE_URL;
     #PERSONAL_TOKEN;
     #DEBUG;
-    #AUTH_EMAIL;
 
     constructor() {
         this.#BASE_URL = getConfigVariable("FIREFLY_URL")
@@ -14,23 +13,6 @@ export default class FireflyService {
 
         this.#PERSONAL_TOKEN = getConfigVariable("FIREFLY_PERSONAL_TOKEN")
         this.#DEBUG = getConfigVariable("DEBUG", "false") === "true";
-        this.#AUTH_EMAIL = getConfigVariable("FIREFLY_AUTH_HEADER_EMAIL", undefined);
-    }
-
-    #getHeaders(isJson = false) {
-        const headers = {
-            Authorization: `Bearer ${this.#PERSONAL_TOKEN}`,
-        };
-
-        if (this.#AUTH_EMAIL) {
-            headers["REMOTE_EMAIL"] = this.#AUTH_EMAIL;
-        }
-
-        if (isJson) {
-            headers["Content-Type"] = "application/json";
-        }
-
-        return headers;
     }
 
     #debugLog(message, data = null) {
@@ -47,7 +29,9 @@ export default class FireflyService {
         this.#debugLog("Fetching categories from Firefly III", { url: `${this.#BASE_URL}/api/v1/categories` });
 
         const response = await fetch(`${this.#BASE_URL}/api/v1/categories`, {
-            headers: this.#getHeaders(),
+            headers: {
+                Authorization: `Bearer ${this.#PERSONAL_TOKEN}`,
+            }
         });
 
         if (!response.ok) {
